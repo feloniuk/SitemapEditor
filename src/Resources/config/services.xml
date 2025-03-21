@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <!-- Product URL Provider Decoration -->
+        <service id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider" 
+                 decorates="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider">
+            <argument type="service" id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider.inner" />
+            <argument type="service" id="Doctrine\DBAL\Connection" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <tag name="shopware.sitemap_url_provider" />
+        </service>
+
+        <!-- <service id="SitemapEditor\Controller\Api\SitemapUrlController" public="true">
+            <argument type="service" id="sales_channel.repository"/>
+            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapExporter"/>
+            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapLister"/>
+            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
+            <argument type="tagged" tag="shopware.sitemap_url_provider"/>
+            <tag name="controller.service_arguments"/>
+        </service> -->
+
+        <!-- Subscriber Sitemap -->
+        <service id="SitemapEditor\Subscriber\SitemapGenerateSubscriber">
+            <argument type="service" id="logger"/>
+            <argument type="service" id="shopware.filesystem.public"/>
+            <argument type="service" id="sales_channel.repository"/>
+            <tag name="kernel.event_subscriber"/>
+            <tag name="monolog.logger" channel="sitemap_editor"/>
+        </service>
+    </services>
+</container>

@@ -1,0 +1,15 @@
+{
+    "sitemap-editor": {
+      "general": {
+        "mainMenuItemGeneral": "Sitemap-URLs",
+        "description": "Sitemap-URLs für Ihre Verkaufskanäle anzeigen und verwalten"
+      },
+      "list": {
+        "cardTitle": "URLs in Sitemap",
+        "salesChannelLabel": "Verkaufskanal",
+        "typeLabel": "URL-Typ",
+        "searchPlaceholder": "URLs durchsuchen...",
+        "limitInfo": "Zeige {shown} von {total} URLs an. Verwenden Sie Filter, um die Ergebnisse einzugrenzen."
+      }
+    }
+  }

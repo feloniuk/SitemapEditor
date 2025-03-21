@@ -1,0 +1,80 @@
+{% block sw_sitemap_url_list %}
+<sw-page class="sw-sitemap-url-list">
+    <template slot="smart-bar-header">
+        <h2>{{ $tc('sitemap-editor.general.mainMenuItemGeneral') }}</h2>
+    </template>
+
+    <template slot="content">
+        <sw-card-view>
+            <sw-card v-if="!isLoading || salesChannels.length" :isLoading="isLoading" :title="$tc('sitemap-editor.list.cardTitle')">
+                <div class="sw-sitemap-url-list__toolbar">
+                    <sw-container columns="1fr 1fr" gap="0px 30px">
+                        <div>
+                            <sw-entity-single-select
+                                :label="$tc('sitemap-editor.list.salesChannelLabel')"
+                                entity="sales_channel"
+                                v-model="selectedSalesChannelId"
+                                @change="onSalesChannelChange">
+                            </sw-entity-single-select>
+                        </div>
+                        <div>
+                            <sw-select-field
+                                :label="$tc('sitemap-editor.list.typeLabel')"
+                                v-model="selectedType"
+                                @change="onTypeChange">
+                                <option v-for="option in typeOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </sw-select-field>
+                        </div>
+                    </sw-container>
+                </div>
+
+                <div class="sw-sitemap-url-list__search">
+                    <sw-simple-search-field
+                        v-model="searchTerm"
+                        @search-term-change="onSearch"
+                        :placeholder="$tc('sitemap-editor.list.searchPlaceholder')">
+                    </sw-simple-search-field>
+                </div>
+
+                <sw-data-grid
+                    :dataSource="filteredUrls"
+                    :columns="[
+                        { property: 'loc', label: 'URL', rawData: true },
+                        { property: 'type', label: 'Type', rawData: true },
+                        { property: 'changefreq', label: 'Change Frequency', rawData: true },
+                        { property: 'priority', label: 'Priority', rawData: true },
+                        { property: 'lastmod', label: 'Last Modified', rawData: true }
+                    ]"
+                    :showSelection="false"
+                    :showActions="false"
+                    :isLoading="isLoading">
+                    <template #column-loc="{ item }">
+                        <a :href="item.loc" target="_blank">{{ item.loc }}</a>
+                    </template>
+                </sw-data-grid>
+
+                <div v-if="totalUrls > limit" class="sw-sitemap-url-list__info">
+                    {{ $tc('sitemap-editor.list.limitInfo', 0, { shown: limit, total: totalUrls }) }}
+                </div>
+            </sw-card>
+
+            {% if salesChannel.customFields.sitemap_editor_url_list %}
+                <h2>Sitemap URLs ({{ salesChannel.customFields.sitemap_editor_url_count }})</h2>
+                <p>Last updated: {{ salesChannel.customFields.sitemap_editor_last_updated|date }}</p>
+                
+                {% set urls = salesChannel.customFields.sitemap_editor_url_list|json_decode %}
+                <ul>
+                    {% for url in urls %}
+                        <li>
+                            <a href="{{ url.loc }}" target="_blank">{{ url.loc }}</a>
+                            {% if url.lastmod %}<small>(Last modified: {{ url.lastmod }})</small>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </sw-card-view>
+    </template>
+</sw-page>
+{% endblock %}

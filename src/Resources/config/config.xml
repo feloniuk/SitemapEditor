@@ -1,0 +1,79 @@
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+    <card>
+        <title>Sitemap Settings</title>
+        <title lang="de-DE">Sitemap-Einstellungen</title>
+
+        <input-field type="bool">
+            <name>modifyProductUrls</name>
+            <label>Modify product URLs</label>
+            <label lang="de-DE">Produkt-URLs ändern</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>productChangeFrequency</name>
+            <label>Product change frequency</label>
+            <label lang="de-DE">Änderungshäufigkeit für Produkte</label>
+            <options>
+                <option>
+                    <id>always</id>
+                    <name>Always</name>
+                    <name lang="de-DE">Immer</name>
+                </option>
+                <option>
+                    <id>hourly</id>
+                    <name>Hourly</name>
+                    <name lang="de-DE">Stündlich</name>
+                </option>
+                <option>
+                    <id>daily</id>
+                    <name>Daily</name>
+                    <name lang="de-DE">Täglich</name>
+                </option>
+                <option>
+                    <id>weekly</id>
+                    <name>Weekly</name>
+                    <name lang="de-DE">Wöchentlich</name>
+                </option>
+                <option>
+                    <id>monthly</id>
+                    <name>Monthly</name>
+                    <name lang="de-DE">Monatlich</name>
+                </option>
+                <option>
+                    <id>yearly</id>
+                    <name>Yearly</name>
+                    <name lang="de-DE">Jährlich</name>
+                </option>
+                <option>
+                    <id>never</id>
+                    <name>Never</name>
+                    <name lang="de-DE">Nie</name>
+                </option>
+            </options>
+            <defaultValue>weekly</defaultValue>
+        </input-field>
+
+        <input-field type="float">
+            <name>productPriority</name>
+            <label>Product priority (0.0 - 1.0)</label>
+            <label lang="de-DE">Produkt-Priorität (0.0 - 1.0)</label>
+            <defaultValue>0.8</defaultValue>
+        </input-field>
+
+        <input-field type="text">
+            <name>excludedProductNumbers</name>
+            <label>Excluded product numbers (comma separated)</label>
+            <label lang="de-DE">Ausgeschlossene Produktnummern (kommagetrennt)</label>
+            <placeholder>product1, product2, product3</placeholder>
+        </input-field>
+
+        <input-field type="bool">
+            <name>excludeOutOfStockProducts</name>
+            <label>Exclude out of stock products</label>
+            <label lang="de-DE">Produkte ohne Lagerbestand ausschließen</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+    </card>
+</config>

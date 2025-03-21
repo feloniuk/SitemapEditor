@@ -1,0 +1,15 @@
+{
+    "sitemap-editor": {
+      "general": {
+        "mainMenuItemGeneral": "Sitemap URLs",
+        "description": "View and manage sitemap URLs for your sales channels"
+      },
+      "list": {
+        "cardTitle": "URLs in Sitemap",
+        "salesChannelLabel": "Sales Channel",
+        "typeLabel": "URL Type",
+        "searchPlaceholder": "Search URLs...",
+        "limitInfo": "Displaying {shown} of {total} URLs. Use filters to narrow down results."
+      }
+    }
+  }
