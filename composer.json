@@ -1,18 +1,25 @@
 {
-    "name": "custom/sitemap-editor",
-    "description": "Shopware 6 plugin for editing sitemap URLs in the context of a sales channel",
+    "name": "swag/sitemap-manager",
+    "description": "A plugin to manage sitemap generation and customization in Shopware 6.5",
     "type": "shopware-platform-plugin",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "SitemapEditor\\": "src/"
+            "SitemapManager\\": "src/"
         }
     },
     "extra": {
-        "shopware-plugin-class": "SitemapEditor\\SitemapEditor",
+        "shopware-plugin-class": "SitemapManager\\SitemapManager",
         "label": {
-            "en-GB": "Sitemap Editor",
-            "de-DE": "Sitemap Editor"
+            "en-GB": "Sitemap Manager",
+            "de-DE": "Sitemap-Manager"
+        },
+        "description": {
+            "en-GB": "Customize and manage sitemap generation by entity and sales channel",
+            "de-DE": "Anpassen und Verwalten der Sitemap-Generierung nach Entität und Verkaufskanal"
         }
+    },
+    "require": {
+        "shopware/core": ">=6.5.0"
     }
 }

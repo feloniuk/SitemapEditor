@@ -1,14 +1,11 @@
 <?php declare(strict_types=1);
 
-namespace SitemapEditor\Subscriber;
+namespace SitemapManager\Subscriber;
 
 use League\Flysystem\FilesystemOperator;
 use Shopware\Core\Content\Sitemap\Event\SitemapGeneratedEvent;
-use Shopware\Core\Content\Sitemap\Event\SitemapSalesChannelCriteriaEvent;
-use Shopware\Core\Content\Sitemap\Event\SitemapSalesChannelContextEvent;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
-use Shopware\Core\Framework\Context;
-use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\Content\Sitemap\Event\SitemapFilterOpenTagEvent;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Psr\Log\LoggerInterface;
 
@@ -16,175 +13,129 @@ class SitemapGenerateSubscriber implements EventSubscriberInterface
 {
     private LoggerInterface $logger;
     private FilesystemOperator $filesystem;
-    private EntityRepository $salesChannelRepository;
-    private string $sitemapDirectory = 'sitemap';
+    private SystemConfigService $systemConfigService;
 
     public function __construct(
         LoggerInterface $logger,
         FilesystemOperator $publicFilesystem,
-        EntityRepository $salesChannelRepository
+        SystemConfigService $systemConfigService
     ) {
         $this->logger = $logger;
         $this->filesystem = $publicFilesystem;
-        $this->salesChannelRepository = $salesChannelRepository;
+        $this->systemConfigService = $systemConfigService;
     }
 
+    /**
+     * Register events to listen to
+     */
     public static function getSubscribedEvents(): array
     {
         return [
+            SitemapFilterOpenTagEvent::class => 'onSitemapFilterOpenTag',
             SitemapGeneratedEvent::class => 'onSitemapGenerated',
-            SitemapSalesChannelCriteriaEvent::class => 'onSitemapSalesChannelCriteria',
-            SitemapSalesChannelContextEvent::class => 'onSitemapSalesChannelContext',
         ];
     }
 
-    public function onSitemapGenerated(SitemapGeneratedEvent $event): void
+    /**
+     * Add custom XML namespaces to sitemap open tag if needed
+     */
+    public function onSitemapFilterOpenTag(SitemapFilterOpenTagEvent $event): void
     {
-        $salesChannelContext = $event->getSalesChannelContext();
-        $salesChannelId = $salesChannelContext->getSalesChannelId();
-        $languageId = $salesChannelContext->getLanguageId();
+        $salesChannelId = $event->getSalesChannelContext()->getSalesChannelId();
         
         $this->logger->info(
-            'Sitemap generation completed for sales channel',
+            'Sitemap open tag event triggered',
+            [
+                'salesChannelId' => $salesChannelId
+            ]
+        );
+        
+        // You could add additional namespaces if needed
+        // Example: $event->addUrlsetNamespace('image', 'http://www.google.com/schemas/sitemap-image/1.1');
+    }
+
+    /**
+     * Perform actions after sitemap has been generated and saved
+     * This is where we can create backup files
+     */
+    public function onSitemapGenerated(SitemapGeneratedEvent $event): void
+    {
+        $salesChannelId = $event->getSalesChannelContext()->getSalesChannelId();
+        $languageId = $event->getSalesChannelContext()->getLanguageId();
+        
+        $this->logger->info(
+            'Sitemap generation completed',
             [
                 'salesChannelId' => $salesChannelId,
                 'languageId' => $languageId
             ]
         );
         
-        // Получаем URL из файлов sitemap
-        $sitemapUrls = $this->getSitemapUrls($salesChannelId, $languageId);
-        
-        // Сохраняем URL в кастомфилды sales channel
-        $this->saveSitemapUrlsToCustomFields($salesChannelId, $sitemapUrls, $salesChannelContext->getContext());
+        // If backup is enabled, create backup of generated files
+        if ($this->getConfig('enableBackup', $salesChannelId)) {
+            $this->createSitemapBackups($salesChannelId, $languageId);
+        }
     }
-
-    public function onSitemapSalesChannelCriteria(SitemapSalesChannelCriteriaEvent $event): void
-    {
-        $criteria = $event->getCriteria();
-        $criteria->addAssociation('translations');
-        
-        $this->logger->debug(
-            'Sitemap criteria modified',
-            [
-                'event' => 'SitemapSalesChannelCriteriaEvent',
-                // 'salesChannelId' => 'SitemapSalesChannelCriteriaEvent' // Use this if available
-            ]
-        );
-    }
-
-    public function onSitemapSalesChannelContext(SitemapSalesChannelContextEvent $event): void
-    {
-        $salesChannelContext = $event->getSalesChannelContext();
-        
-        $this->logger->debug(
-            'Sitemap context event',
-            [
-                'salesChannelId' => $salesChannelContext->getSalesChannelId(),
-                'salesChannelName' => $salesChannelContext->getSalesChannel()->getName(),
-            ]
-        );
-    }
-
+    
     /**
-     * Получает все URL из файлов sitemap.xml для конкретного sales channel
+     * Create backups of the sitemap files
      */
-    private function getSitemapUrls(string $salesChannelId, string $languageId): array
+    private function createSitemapBackups(string $salesChannelId, string $languageId): void
     {
-        $urls = [];
-        
         try {
-            // Структура файлов: sitemap/salesChannelId_languageId_index.xml
-            $filePattern = sprintf('%s_%s_*.xml', $salesChannelId, $languageId);
+            $sitemapPath = 'sitemap/salesChannel-' . $salesChannelId . '-' . $languageId;
+            $backupDir = 'sitemap/backup/' . $salesChannelId . '-' . $languageId . '/' . date('Y-m-d_H-i-s');
             
-            // Получаем список файлов в директории sitemap
-            $pattern = '/^' . preg_quote($salesChannelId . '_' . $languageId . '_', '/') . '.*\.xml$/';
-            $files = $this->filesystem->listContents($this->sitemapDirectory)
-                ->filter(function ($file) use ($pattern) {
-                    return $file['type'] === 'file' && preg_match($pattern, $file['path']);
-                })
-                ->toArray();
+            // Create backup directory if it doesn't exist
+            if (!$this->filesystem->directoryExists($backupDir)) {
+                $this->filesystem->createDirectory($backupDir);
+            }
+            
+            // Get all sitemap files for this sales channel and language
+            if ($this->filesystem->directoryExists($sitemapPath)) {
+                $files = array_filter(
+                    $this->filesystem->listContents($sitemapPath)->toArray(),
+                    function ($file) {
+                        return $file['type'] === 'file' && pathinfo($file['path'], PATHINFO_EXTENSION) === 'xml.gz';
+                    }
+                );
                 
-            foreach ($files as $file) {
-                $content = $this->filesystem->read($this->sitemapDirectory . '/' . $file['path']);
-                
-                // Парсим XML и извлекаем все URL
-                $xml = simplexml_load_string($content);
-                if ($xml) {
-                    $xml->registerXPathNamespace('s', 'http://www.sitemaps.org/schemas/sitemap/0.9');
-                    $urlNodes = $xml->xpath('//s:url');
+                foreach ($files as $file) {
+                    $fileName = basename($file['path']);
                     
-                    foreach ($urlNodes as $urlNode) {
-                        $loc = (string)$urlNode->loc;
+                    if ($this->filesystem->fileExists($file['path'])) {
+                        $content = $this->filesystem->read($file['path']);
+                        $this->filesystem->write($backupDir . '/' . $fileName, $content);
                         
-                        if (!empty($loc)) {
-                            $urlInfo = [
-                                'loc' => $loc,
-                                'lastmod' => (string)$urlNode->lastmod,
-                                'changefreq' => (string)$urlNode->changefreq,
-                                'priority' => (string)$urlNode->priority
-                            ];
-                            
-                            $urls[] = $urlInfo;
-                        }
+                        $this->logger->info(
+                            'Created sitemap backup',
+                            [
+                                'originalFile' => $file['path'],
+                                'backupFile' => $backupDir . '/' . $fileName
+                            ]
+                        );
                     }
                 }
             }
         } catch (\Exception $e) {
             $this->logger->error(
-                'Error while searching sitemap files',
+                'Error creating sitemap backups',
                 [
                     'error' => $e->getMessage(),
                     'salesChannelId' => $salesChannelId
                 ]
             );
         }
-        
-        $this->logger->info(
-            'Sitemap URLs collected',
-            [
-                'salesChannelId' => $salesChannelId,
-                'urlCount' => count($urls)
-            ]
-        );
-        
-        return $urls;
     }
     
     /**
-     * Сохраняет URLs в кастомфилды sales channel
+     * Get plugin configuration
      */
-    private function saveSitemapUrlsToCustomFields(string $salesChannelId, array $urls, Context $context): void
+    private function getConfig(string $key, string $salesChannelId): mixed
     {
-        try {
-            // Сохраняем URL в кастомфилды sales channel
-            $this->salesChannelRepository->update([
-                [
-                    'id' => $salesChannelId,
-                    'customFields' => [
-                        'sitemap_editor_url_list' => json_encode($urls),
-                        'sitemap_editor_last_updated' => (new \DateTime())->format(\DateTime::ATOM),
-                        'sitemap_editor_url_count' => count($urls)
-                    ]
-                ]
-            ], $context);
-            
-            $this->logger->info(
-                'Sitemap URLs saved to custom fields',
-                [
-                    'salesChannelId' => $salesChannelId,
-                    'urlCount' => count($urls)
-                ]
-            );
-        } catch (\Exception $e) {
-            $this->logger->error(
-                'Error while saving sitemap URLs to custom fields',
-                [
-                    'error' => $e->getMessage(),
-                    'salesChannelId' => $salesChannelId
-                ]
-            );
-        }
+        return $this->systemConfigService->get(
+            'SitemapManager.config.' . $key,
+            $salesChannelId
+        );
     }
-    
 }

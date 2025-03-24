@@ -4,45 +4,51 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <services>
-        <!-- Product URL Provider Decoration -->
-        <service id="SitemapEditor\Core\Content\Sitemap\Provider\CategorySitemapUrlEditorProvider" 
-            class="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider">
-            <argument type="service" id="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider" />
+        <!-- Sitemap URL Providers -->
+        <service id="SitemapManager\Core\Content\Sitemap\Provider\ProductSitemapUrlProvider" 
+            decorates="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider">
+            <argument type="service" id="SitemapManager\Core\Content\Sitemap\Provider\ProductSitemapUrlProvider.inner" />
             <argument type="service" id="Doctrine\DBAL\Connection" />
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="product.repository" />
             <argument type="service" id="logger" />
-            <tag name="shopware.sitemap_url_provider" />
-            <tag name="monolog.logger" channel="sitemap_editor" />
-        </service>
-
-        <service id="SitemapEditor\Controller\Api\SitemapUrlController" public="true">
-            <argument type="service" id="sales_channel.repository"/>
-            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapExporter"/>
-            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapLister"/>
-            <argument type="service" id="Shopware\Core\System\SalesChannel\Context\SalesChannelContextFactory"/>
-            <argument type="tagged" tag="shopware.sitemap_url_provider"/>
-            <tag name="controller.service_arguments"/>
-        </service>
-
-        <!-- Subscriber Sitemap -->
-        <service id="SitemapEditor\Subscriber\SitemapGenerateSubscriber">
-            <argument type="service" id="logger"/>
-            <argument type="service" id="shopware.filesystem.public"/>
-            <argument type="service" id="sales_channel.repository" />
-            <tag name="kernel.event_subscriber"/>
-            <tag name="monolog.logger" channel="sitemap_editor"/>
+            <tag name="monolog.logger" channel="sitemap_manager" />
         </service>
         
-        <!-- System Config Changed Subscriber -->
-        <service id="SitemapEditor\Subscriber\SystemConfigChangedSubscriber">
-            <argument type="service" id="messenger.bus.shopware" />
-            <tag name="kernel.event_subscriber"/>
-            <tag name="monolog.logger" channel="sitemap_editor"/>
+        <service id="SitemapManager\Core\Content\Sitemap\Provider\CategorySitemapUrlProvider" 
+            decorates="Shopware\Core\Content\Sitemap\Provider\CategoryUrlProvider">
+            <argument type="service" id="SitemapManager\Core\Content\Sitemap\Provider\CategorySitemapUrlProvider.inner" />
+            <argument type="service" id="Doctrine\DBAL\Connection" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="category.repository" />
+            <argument type="service" id="logger" />
+            <tag name="monolog.logger" channel="sitemap_manager" />
+        </service>
+        
+        <!-- <service id="SitemapManager\Core\Content\Sitemap\Provider\LandingPageSitemapUrlProvider" 
+            decorates="Shopware\Core\Content\Sitemap\Provider\LandingPageUrlProvider">
+            <argument type="service" id="SitemapManager\Core\Content\Sitemap\Provider\LandingPageSitemapUrlProvider.inner" />
+            <argument type="service" id="Doctrine\DBAL\Connection" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="landing_page.repository" />
+            <argument type="service" id="logger" />
+            <tag name="monolog.logger" channel="sitemap_manager" />
+        </service> -->
+
+        <!-- Event Subscribers -->
+        <service id="SitemapManager\Subscriber\SitemapGenerateSubscriber">
+            <argument type="service" id="logger" />
+            <argument type="service" id="shopware.filesystem.public" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <tag name="kernel.event_subscriber" />
+            <tag name="monolog.logger" channel="sitemap_manager" />
         </service>
 
-        <service id="SitemapEditor\Command\ConfigCheckCommand">
+        <!-- Commands -->
+        <service id="SitemapManager\Command\SitemapManagerCheckCommand">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <tag name="console.command"/>
+            <argument type="service" id="sales_channel.repository" />
+            <tag name="console.command" />
         </service>
     </services>
 </container>

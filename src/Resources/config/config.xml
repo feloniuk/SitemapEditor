@@ -1,14 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+    
     <card>
-        <title>Sitemap Settings</title>
-        <title lang="de-DE">Sitemap-Einstellungen</title>
+        <title>Product Settings</title>
+        <title lang="de-DE">Produkt-Einstellungen</title>
 
         <input-field type="bool">
             <name>modifyProductUrls</name>
             <label>Modify product URLs</label>
             <label lang="de-DE">Produkt-URLs ändern</label>
             <defaultValue>true</defaultValue>
+            <helpText>Enable or disable product URL modifications in sitemap</helpText>
+            <helpText lang="de-DE">Aktivieren oder deaktivieren Sie Produkt-URL-Änderungen in der Sitemap</helpText>
         </input-field>
 
         <input-field type="single-select">
@@ -60,20 +64,186 @@
             <label>Product priority (0.0 - 1.0)</label>
             <label lang="de-DE">Produkt-Priorität (0.0 - 1.0)</label>
             <defaultValue>0.8</defaultValue>
+            <min>0.0</min>
+            <max>1.0</max>
+            <steps>0.1</steps>
         </input-field>
 
         <input-field type="text">
-            <name>excludedProductNumbers</name>
-            <label>Excluded product numbers (comma separated)</label>
-            <label lang="de-DE">Ausgeschlossene Produktnummern (kommagetrennt)</label>
+            <name>excludeProductNumbers</name>
+            <label>Exclude product numbers (comma separated)</label>
+            <label lang="de-DE">Produktnummern ausschließen (durch Komma getrennt)</label>
             <placeholder>product1, product2, product3</placeholder>
         </input-field>
 
         <input-field type="bool">
             <name>excludeOutOfStockProducts</name>
             <label>Exclude out of stock products</label>
-            <label lang="de-DE">Produkte ohne Lagerbestand ausschließen</label>
+            <label lang="de-DE">Nicht vorrätige Produkte ausschließen</label>
             <defaultValue>false</defaultValue>
+        </input-field>
+    </card>
+    
+    <card>
+        <title>Category Settings</title>
+        <title lang="de-DE">Kategorie-Einstellungen</title>
+
+        <input-field type="bool">
+            <name>modifyCategoryUrls</name>
+            <label>Modify category URLs</label>
+            <label lang="de-DE">Kategorie-URLs ändern</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>categoryChangeFrequency</name>
+            <label>Category change frequency</label>
+            <label lang="de-DE">Änderungshäufigkeit für Kategorien</label>
+            <options>
+                <option>
+                    <id>always</id>
+                    <name>Always</name>
+                    <name lang="de-DE">Immer</name>
+                </option>
+                <option>
+                    <id>hourly</id>
+                    <name>Hourly</name>
+                    <name lang="de-DE">Stündlich</name>
+                </option>
+                <option>
+                    <id>daily</id>
+                    <name>Daily</name>
+                    <name lang="de-DE">Täglich</name>
+                </option>
+                <option>
+                    <id>weekly</id>
+                    <name>Weekly</name>
+                    <name lang="de-DE">Wöchentlich</name>
+                </option>
+                <option>
+                    <id>monthly</id>
+                    <name>Monthly</name>
+                    <name lang="de-DE">Monatlich</name>
+                </option>
+                <option>
+                    <id>yearly</id>
+                    <name>Yearly</name>
+                    <name lang="de-DE">Jährlich</name>
+                </option>
+                <option>
+                    <id>never</id>
+                    <name>Never</name>
+                    <name lang="de-DE">Nie</name>
+                </option>
+            </options>
+            <defaultValue>monthly</defaultValue>
+        </input-field>
+
+        <input-field type="float">
+            <name>categoryPriority</name>
+            <label>Category priority (0.0 - 1.0)</label>
+            <label lang="de-DE">Kategorie-Priorität (0.0 - 1.0)</label>
+            <defaultValue>0.7</defaultValue>
+            <min>0.0</min>
+            <max>1.0</max>
+            <steps>0.1</steps>
+        </input-field>
+
+        <input-field type="text">
+            <name>excludeCategoryIds</name>
+            <label>Exclude category IDs (comma separated)</label>
+            <label lang="de-DE">Kategorie-IDs ausschließen (durch Komma getrennt)</label>
+        </input-field>
+    </card>
+    
+    <!-- <card>
+        <title>Landing Page Settings</title>
+        <title lang="de-DE">Landing-Page-Einstellungen</title>
+
+        <input-field type="bool">
+            <name>modifyLandingPageUrls</name>
+            <label>Modify landing page URLs</label>
+            <label lang="de-DE">Landing-Page-URLs ändern</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+
+        <input-field type="single-select">
+            <name>landingPageChangeFrequency</name>
+            <label>Landing page change frequency</label>
+            <label lang="de-DE">Änderungshäufigkeit für Landing-Pages</label>
+            <options>
+                <option>
+                    <id>always</id>
+                    <name>Always</name>
+                    <name lang="de-DE">Immer</name>
+                </option>
+                <option>
+                    <id>hourly</id>
+                    <name>Hourly</name>
+                    <name lang="de-DE">Stündlich</name>
+                </option>
+                <option>
+                    <id>daily</id>
+                    <name>Daily</name>
+                    <name lang="de-DE">Täglich</name>
+                </option>
+                <option>
+                    <id>weekly</id>
+                    <name>Weekly</name>
+                    <name lang="de-DE">Wöchentlich</name>
+                </option>
+                <option>
+                    <id>monthly</id>
+                    <name>Monthly</name>
+                    <name lang="de-DE">Monatlich</name>
+                </option>
+                <option>
+                    <id>yearly</id>
+                    <name>Yearly</name>
+                    <name lang="de-DE">Jährlich</name>
+                </option>
+                <option>
+                    <id>never</id>
+                    <name>Never</name>
+                    <name lang="de-DE">Nie</name>
+                </option>
+            </options>
+            <defaultValue>monthly</defaultValue>
+        </input-field>
+
+        <input-field type="float">
+            <name>landingPagePriority</name>
+            <label>Landing page priority (0.0 - 1.0)</label>
+            <label lang="de-DE">Landing-Page-Priorität (0.0 - 1.0)</label>
+            <defaultValue>0.6</defaultValue>
+            <min>0.0</min>
+            <max>1.0</max>
+            <steps>0.1</steps>
+        </input-field>
+
+        <input-field type="text">
+            <name>excludeLandingPageIds</name>
+            <label>Exclude landing page IDs (comma separated)</label>
+            <label lang="de-DE">Landing-Page-IDs ausschließen (durch Komma getrennt)</label>
+        </input-field>
+    </card> -->
+    
+    <card>
+        <title>General Settings</title>
+        <title lang="de-DE">Allgemeine Einstellungen</title>
+
+        <input-field type="bool">
+            <name>enableBackup</name>
+            <label>Create backup of original sitemap</label>
+            <label lang="de-DE">Backup der originalen Sitemap erstellen</label>
+            <defaultValue>true</defaultValue>
+        </input-field>
+        
+        <input-field type="bool">
+            <name>enableLogging</name>
+            <label>Enable detailed logging</label>
+            <label lang="de-DE">Detaillierte Protokollierung aktivieren</label>
+            <defaultValue>true</defaultValue>
         </input-field>
     </card>
 </config>
