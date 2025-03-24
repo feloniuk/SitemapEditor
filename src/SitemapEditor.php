@@ -15,7 +15,6 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Feloniuk\SitemapEditor\Service\SitemapService;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 
 class SitemapEditor extends Plugin

@@ -5,10 +5,9 @@
 
     <services>
         <!-- Product URL Provider Decoration -->
-        <service id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider" 
-                 decorates="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider"
-                 decoration-priority="500">
-            <argument type="service" id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider.inner" />
+        <service id="SitemapEditor\Core\Content\Sitemap\Provider\CategorySitemapUrlEditorProvider" 
+            class="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider">
+            <argument type="service" id="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider" />
             <argument type="service" id="Doctrine\DBAL\Connection" />
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="logger" />
@@ -39,6 +38,11 @@
             <argument type="service" id="messenger.bus.shopware" />
             <tag name="kernel.event_subscriber"/>
             <tag name="monolog.logger" channel="sitemap_editor"/>
+        </service>
+
+        <service id="SitemapEditor\Command\ConfigCheckCommand">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <tag name="console.command"/>
         </service>
     </services>
 </container>
