@@ -9,21 +9,25 @@ use Shopware\Core\Content\Sitemap\Struct\UrlResult;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Psr\Log\LoggerInterface;
 
 class SitemapUrlEditorProvider extends AbstractUrlProvider
 {
     private AbstractUrlProvider $decoratedUrlProvider;
     private Connection $connection;
     private SystemConfigService $systemConfigService;
+    private LoggerInterface $logger;
 
     public function __construct(
         AbstractUrlProvider $decoratedUrlProvider,
         Connection $connection,
-        SystemConfigService $systemConfigService
+        SystemConfigService $systemConfigService,
+        ?LoggerInterface $logger = null
     ) {
         $this->decoratedUrlProvider = $decoratedUrlProvider;
         $this->connection = $connection;
         $this->systemConfigService = $systemConfigService;
+        $this->logger = $logger ?? new \Psr\Log\NullLogger();
     }
 
     public function getDecorated(): AbstractUrlProvider
@@ -42,13 +46,26 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
     public function getUrls(SalesChannelContext $context, int $limit, ?int $offset = null): UrlResult
     {
         try {
+            // Log that this method was called
+            $this->logger->info('SitemapUrlEditorProvider::getUrls called', [
+                'salesChannelId' => $context->getSalesChannelId(),
+                'limit' => $limit,
+                'offset' => $offset
+            ]);
+            
             // Get the original URLs
             $urlResult = $this->getDecorated()->getUrls($context, $limit, $offset);
             $urls = $urlResult->getUrls();
             
             // If modification is not enabled for this sales channel, return the original URLs
             $modifyProductUrls = $this->getConfig('modifyProductUrls', $context->getSalesChannelId());
+            $this->logger->info('Configuration check', [
+                'modifyProductUrls' => $modifyProductUrls,
+                'salesChannelId' => $context->getSalesChannelId()
+            ]);
+            
             if (!$modifyProductUrls) {
+                $this->logger->info('URL modification disabled, returning original URLs');
                 return $urlResult;
             }
             
@@ -59,6 +76,7 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
             $excludedProductIds = [];
             if (!empty($excludedProductNumbers)) {
                 $excludedProductIds = $this->getProductIdsByProductNumbers($excludedProductNumbers);
+                $this->logger->info('Excluded product IDs', ['excludedProductIds' => $excludedProductIds]);
             }
             
             // Check if we should exclude out of stock products
@@ -66,22 +84,34 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
             $outOfStockProductIds = [];
             if ($excludeOutOfStock) {
                 $outOfStockProductIds = $this->getOutOfStockProductIds();
+                $this->logger->info('Out of stock product IDs', [
+                    'count' => count($outOfStockProductIds),
+                    'first10' => array_slice($outOfStockProductIds, 0, 10)
+                ]);
             }
             
             // Get custom change frequency and priority from configuration
             $changeFreq = $this->getConfig('productChangeFrequency', $context->getSalesChannelId());
             $priority = (float) $this->getConfig('productPriority', $context->getSalesChannelId());
             
+            $this->logger->info('URL modification settings', [
+                'changeFreq' => $changeFreq,
+                'priority' => $priority
+            ]);
+            
             // Filter and modify URLs
             $filteredUrls = [];
+            $excludedCount = 0;
             foreach ($urls as $url) {
                 // Skip excluded products
                 if (in_array($url->getIdentifier(), $excludedProductIds)) {
+                    $excludedCount++;
                     continue;
                 }
                 
                 // Skip out of stock products if configured
                 if ($excludeOutOfStock && in_array($url->getIdentifier(), $outOfStockProductIds)) {
+                    $excludedCount++;
                     continue;
                 }
                 
@@ -93,16 +123,21 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
                 
                 $filteredUrls[] = $url;
             }
-
-            // print_r('<pre>');
-            // var_dump($filteredUrls);
-            // print_r('</pre>');
+            
+            $this->logger->info('URL filtering results', [
+                'originalCount' => count($urls),
+                'filteredCount' => count($filteredUrls),
+                'excludedCount' => $excludedCount
+            ]);
 
             return new UrlResult($filteredUrls, $urlResult->getNextOffset());
         } catch (\Exception $e) {
-            // Log the error
-            // Return an empty result
-            return new UrlResult([], null);
+            $this->logger->error('Error in SitemapUrlEditorProvider', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Return the original result if possible, otherwise empty result
+            return isset($urlResult) ? $urlResult : new UrlResult([], null);
         }
     }
     
@@ -111,10 +146,18 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
      */
     private function getConfig(string $key, string $salesChannelId): mixed
     {
-        return $this->systemConfigService->get(
+        $value = $this->systemConfigService->get(
             'SitemapEditor.config.' . $key,
             $salesChannelId
         );
+        
+        $this->logger->debug('Config retrieved', [
+            'key' => $key,
+            'salesChannelId' => $salesChannelId,
+            'value' => $value
+        ]);
+        
+        return $value;
     }
     
     /**
@@ -128,7 +171,14 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
         }
         
         $excludedNumbers = explode(',', $excludedNumbersString);
-        return array_map('trim', $excludedNumbers);
+        $result = array_map('trim', $excludedNumbers);
+        
+        $this->logger->debug('Excluded product numbers', [
+            'salesChannelId' => $salesChannelId,
+            'numbers' => $result
+        ]);
+        
+        return $result;
     }
     
     /**
@@ -140,13 +190,21 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
             return [];
         }
         
-        $result = $this->connection->fetchAllAssociative(
-            'SELECT LOWER(HEX(id)) as id FROM product WHERE product_number IN (:productNumbers)',
-            ['productNumbers' => $productNumbers],
-            ['productNumbers' => Connection::PARAM_STR_ARRAY]
-        );
-        
-        return array_column($result, 'id');
+        try {
+            $result = $this->connection->fetchAllAssociative(
+                'SELECT LOWER(HEX(id)) as id FROM product WHERE product_number IN (:productNumbers)',
+                ['productNumbers' => $productNumbers],
+                ['productNumbers' => Connection::PARAM_STR_ARRAY]
+            );
+            
+            return array_column($result, 'id');
+        } catch (\Exception $e) {
+            $this->logger->error('Error fetching product IDs by numbers', [
+                'error' => $e->getMessage(),
+                'productNumbers' => $productNumbers
+            ]);
+            return [];
+        }
     }
     
     /**
@@ -154,11 +212,18 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
      */
     private function getOutOfStockProductIds(): array
     {
-        $result = $this->connection->fetchAllAssociative(
-            'SELECT LOWER(HEX(id)) as id FROM product WHERE available_stock <= 0 OR available = 0'
-        );
-        
-        return array_column($result, 'id');
+        try {
+            $result = $this->connection->fetchAllAssociative(
+                'SELECT LOWER(HEX(id)) as id FROM product WHERE available_stock <= 0 OR available = 0'
+            );
+            
+            return array_column($result, 'id');
+        } catch (\Exception $e) {
+            $this->logger->error('Error fetching out of stock product IDs', [
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
     }
     
     /**
@@ -166,44 +231,64 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
      */
     protected function getSeoUrls(array $ids, string $routeName, SalesChannelContext $context, Connection $connection): array
     {
+        $this->logger->debug('getSeoUrls called', [
+            'routeName' => $routeName,
+            'idCount' => count($ids),
+            'salesChannelId' => $context->getSalesChannelId()
+        ]);
+        
         // If we need to exclude out of stock products at the database level
         $excludeOutOfStock = $this->getConfig('excludeOutOfStockProducts', $context->getSalesChannelId());
         
-        if ($routeName === 'frontend.detail.page' && $excludeOutOfStock) {
-            // Add a JOIN to filter out products that are out of stock
-            $sql = 'SELECT LOWER(HEX(seo_url.foreign_key)) as foreign_key, seo_url.seo_path_info
-                    FROM seo_url
-                    INNER JOIN product ON product.id = seo_url.foreign_key
-                    WHERE seo_url.foreign_key IN (:ids)
-                    AND seo_url.route_name = :routeName
-                    AND seo_url.is_canonical = 1
-                    AND seo_url.is_deleted = 0
-                    AND seo_url.language_id = :languageId
-                    AND (seo_url.sales_channel_id = :salesChannelId OR seo_url.sales_channel_id IS NULL)
-                    AND product.available_stock > 0
-                    AND product.available = 1';
-        } else {
-            // Standard query
-            $sql = 'SELECT LOWER(HEX(foreign_key)) as foreign_key, seo_path_info
-                    FROM seo_url WHERE foreign_key IN (:ids)
-                    AND route_name = :routeName
-                    AND is_canonical = 1
-                    AND is_deleted = 0
-                    AND language_id = :languageId
-                    AND (sales_channel_id = :salesChannelId OR sales_channel_id IS NULL)';
+        try {
+            if ($routeName === 'frontend.detail.page' && $excludeOutOfStock) {
+                // Add a JOIN to filter out products that are out of stock
+                $sql = 'SELECT LOWER(HEX(seo_url.foreign_key)) as foreign_key, seo_url.seo_path_info
+                        FROM seo_url
+                        INNER JOIN product ON product.id = seo_url.foreign_key
+                        WHERE seo_url.foreign_key IN (:ids)
+                        AND seo_url.route_name = :routeName
+                        AND seo_url.is_canonical = 1
+                        AND seo_url.is_deleted = 0
+                        AND seo_url.language_id = :languageId
+                        AND (seo_url.sales_channel_id = :salesChannelId OR seo_url.sales_channel_id IS NULL)
+                        AND product.available_stock > 0
+                        AND product.available = 1';
+            } else {
+                // Standard query
+                $sql = 'SELECT LOWER(HEX(foreign_key)) as foreign_key, seo_path_info
+                        FROM seo_url WHERE foreign_key IN (:ids)
+                        AND route_name = :routeName
+                        AND is_canonical = 1
+                        AND is_deleted = 0
+                        AND language_id = :languageId
+                        AND (sales_channel_id = :salesChannelId OR sales_channel_id IS NULL)';
+            }
+                    
+            $result = $connection->fetchAllAssociative(
+                $sql,
+                [
+                    'routeName' => $routeName,
+                    'languageId' => Uuid::fromHexToBytes($context->getSalesChannel()->getLanguageId()),
+                    'salesChannelId' => Uuid::fromHexToBytes($context->getSalesChannelId()),
+                    'ids' => Uuid::fromHexToBytesList(array_values($ids)),
+                ],
+                [
+                    'ids' => Connection::PARAM_STR_ARRAY,
+                ]
+            );
+            
+            $this->logger->debug('getSeoUrls result', [
+                'resultCount' => count($result)
+            ]);
+            
+            return $result;
+        } catch (\Exception $e) {
+            $this->logger->error('Error in getSeoUrls', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return parent::getSeoUrls($ids, $routeName, $context, $connection);
         }
-                
-        return $connection->fetchAllAssociative(
-            $sql,
-            [
-                'routeName' => $routeName,
-                'languageId' => Uuid::fromHexToBytes($context->getSalesChannel()->getLanguageId()),
-                'salesChannelId' => Uuid::fromHexToBytes($context->getSalesChannelId()),
-                'ids' => Uuid::fromHexToBytesList(array_values($ids)),
-            ],
-            [
-                'ids' => Connection::PARAM_STR_ARRAY,
-            ]
-        );
     }
 }

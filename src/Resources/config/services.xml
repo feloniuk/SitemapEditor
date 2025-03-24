@@ -6,11 +6,14 @@
     <services>
         <!-- Product URL Provider Decoration -->
         <service id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider" 
-                 decorates="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider">
+                 decorates="Shopware\Core\Content\Sitemap\Provider\ProductUrlProvider"
+                 decoration-priority="500">
             <argument type="service" id="SitemapEditor\Core\Content\Sitemap\Provider\SitemapUrlEditorProvider.inner" />
             <argument type="service" id="Doctrine\DBAL\Connection" />
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="logger" />
             <tag name="shopware.sitemap_url_provider" />
+            <tag name="monolog.logger" channel="sitemap_editor" />
         </service>
 
         <service id="SitemapEditor\Controller\Api\SitemapUrlController" public="true">
@@ -30,11 +33,12 @@
             <tag name="kernel.event_subscriber"/>
             <tag name="monolog.logger" channel="sitemap_editor"/>
         </service>
-
-        <service id="Feloniuk\SitemapEditor\Service\SitemapService">
-            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapLister"/>
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
-            <argument type="service" id="Shopware\Core\Content\Sitemap\Service\SitemapExporter"/>
+        
+        <!-- System Config Changed Subscriber -->
+        <service id="SitemapEditor\Subscriber\SystemConfigChangedSubscriber">
+            <argument type="service" id="messenger.bus.shopware" />
+            <tag name="kernel.event_subscriber"/>
+            <tag name="monolog.logger" channel="sitemap_editor"/>
         </service>
     </services>
 </container>
