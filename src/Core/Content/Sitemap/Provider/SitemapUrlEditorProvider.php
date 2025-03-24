@@ -41,59 +41,69 @@ class SitemapUrlEditorProvider extends AbstractUrlProvider
      */
     public function getUrls(SalesChannelContext $context, int $limit, ?int $offset = null): UrlResult
     {
-        // Get the original URLs
-        $urlResult = $this->getDecorated()->getUrls($context, $limit, $offset);
-        $urls = $urlResult->getUrls();
-        
-        // If modification is not enabled for this sales channel, return the original URLs
-        $modifyProductUrls = $this->getConfig('modifyProductUrls', $context->getSalesChannelId());
-        if (!$modifyProductUrls) {
-            return $urlResult;
-        }
-        
-        // Get excluded product numbers from configuration
-        $excludedProductNumbers = $this->getExcludedProductNumbers($context->getSalesChannelId());
-        
-        // Get excluded product IDs by product numbers
-        $excludedProductIds = [];
-        if (!empty($excludedProductNumbers)) {
-            $excludedProductIds = $this->getProductIdsByProductNumbers($excludedProductNumbers);
-        }
-        
-        // Check if we should exclude out of stock products
-        $excludeOutOfStock = $this->getConfig('excludeOutOfStockProducts', $context->getSalesChannelId());
-        $outOfStockProductIds = [];
-        if ($excludeOutOfStock) {
-            $outOfStockProductIds = $this->getOutOfStockProductIds();
-        }
-        
-        // Get custom change frequency and priority from configuration
-        $changeFreq = $this->getConfig('productChangeFrequency', $context->getSalesChannelId());
-        $priority = (float) $this->getConfig('productPriority', $context->getSalesChannelId());
-        
-        // Filter and modify URLs
-        $filteredUrls = [];
-        foreach ($urls as $url) {
-            // Skip excluded products
-            if (in_array($url->getIdentifier(), $excludedProductIds)) {
-                continue;
+        try {
+            // Get the original URLs
+            $urlResult = $this->getDecorated()->getUrls($context, $limit, $offset);
+            $urls = $urlResult->getUrls();
+            
+            // If modification is not enabled for this sales channel, return the original URLs
+            $modifyProductUrls = $this->getConfig('modifyProductUrls', $context->getSalesChannelId());
+            if (!$modifyProductUrls) {
+                return $urlResult;
             }
             
-            // Skip out of stock products if configured
-            if ($excludeOutOfStock && in_array($url->getIdentifier(), $outOfStockProductIds)) {
-                continue;
+            // Get excluded product numbers from configuration
+            $excludedProductNumbers = $this->getExcludedProductNumbers($context->getSalesChannelId());
+            
+            // Get excluded product IDs by product numbers
+            $excludedProductIds = [];
+            if (!empty($excludedProductNumbers)) {
+                $excludedProductIds = $this->getProductIdsByProductNumbers($excludedProductNumbers);
             }
             
-            // Modify change frequency and priority if this is a product URL
-            if ($url->getResource() === 'product') {
-                $url->setChangefreq($changeFreq);
-                $url->setPriority($priority);
+            // Check if we should exclude out of stock products
+            $excludeOutOfStock = $this->getConfig('excludeOutOfStockProducts', $context->getSalesChannelId());
+            $outOfStockProductIds = [];
+            if ($excludeOutOfStock) {
+                $outOfStockProductIds = $this->getOutOfStockProductIds();
             }
             
-            $filteredUrls[] = $url;
+            // Get custom change frequency and priority from configuration
+            $changeFreq = $this->getConfig('productChangeFrequency', $context->getSalesChannelId());
+            $priority = (float) $this->getConfig('productPriority', $context->getSalesChannelId());
+            
+            // Filter and modify URLs
+            $filteredUrls = [];
+            foreach ($urls as $url) {
+                // Skip excluded products
+                if (in_array($url->getIdentifier(), $excludedProductIds)) {
+                    continue;
+                }
+                
+                // Skip out of stock products if configured
+                if ($excludeOutOfStock && in_array($url->getIdentifier(), $outOfStockProductIds)) {
+                    continue;
+                }
+                
+                // Modify change frequency and priority if this is a product URL
+                if ($url->getResource() === 'product') {
+                    $url->setChangefreq($changeFreq);
+                    $url->setPriority($priority);
+                }
+                
+                $filteredUrls[] = $url;
+            }
+
+            // print_r('<pre>');
+            // var_dump($filteredUrls);
+            // print_r('</pre>');
+
+            return new UrlResult($filteredUrls, $urlResult->getNextOffset());
+        } catch (\Exception $e) {
+            // Log the error
+            // Return an empty result
+            return new UrlResult([], null);
         }
-        
-        return new UrlResult($filteredUrls, $urlResult->getNextOffset());
     }
     
     /**

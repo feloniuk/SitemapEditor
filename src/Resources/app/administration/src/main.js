@@ -1,6 +1,8 @@
 const { Component, Data } = Shopware;
 const { Criteria } = Data;
 
+import template from './sitemap-url-list.html.twig';
+
 Component.register('sw-sitemap-url-list', {
     template,
 
@@ -155,7 +157,7 @@ Shopware.Module.register('sw-sitemap-editor', {
 
     settingsItem: {
         group: 'shop',
-        to: 'sw.sitemap.editor.index',
+        to: 'sw.sitemap-editor.index',
         icon: 'default-action-settings',
         privilege: 'system.system_config'
     }

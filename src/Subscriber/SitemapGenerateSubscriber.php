@@ -6,7 +6,7 @@ use League\Flysystem\FilesystemOperator;
 use Shopware\Core\Content\Sitemap\Event\SitemapGeneratedEvent;
 use Shopware\Core\Content\Sitemap\Event\SitemapSalesChannelCriteriaEvent;
 use Shopware\Core\Content\Sitemap\Event\SitemapSalesChannelContextEvent;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -16,13 +16,13 @@ class SitemapGenerateSubscriber implements EventSubscriberInterface
 {
     private LoggerInterface $logger;
     private FilesystemOperator $filesystem;
-    private EntityRepositoryInterface $salesChannelRepository;
+    private EntityRepository $salesChannelRepository;
     private string $sitemapDirectory = 'sitemap';
 
     public function __construct(
         LoggerInterface $logger,
         FilesystemOperator $publicFilesystem,
-        EntityRepositoryInterface $salesChannelRepository
+        EntityRepository $salesChannelRepository
     ) {
         $this->logger = $logger;
         $this->filesystem = $publicFilesystem;
@@ -67,8 +67,8 @@ class SitemapGenerateSubscriber implements EventSubscriberInterface
         $this->logger->debug(
             'Sitemap criteria modified',
             [
-                'provider' => $event->getProvider(),
-                'salesChannelId' => $event->getSalesChannelContext()->getSalesChannelId(),
+                'event' => 'SitemapSalesChannelCriteriaEvent',
+                // 'salesChannelId' => 'SitemapSalesChannelCriteriaEvent' // Use this if available
             ]
         );
     }
@@ -98,9 +98,10 @@ class SitemapGenerateSubscriber implements EventSubscriberInterface
             $filePattern = sprintf('%s_%s_*.xml', $salesChannelId, $languageId);
             
             // Получаем список файлов в директории sitemap
+            $pattern = '/^' . preg_quote($salesChannelId . '_' . $languageId . '_', '/') . '.*\.xml$/';
             $files = $this->filesystem->listContents($this->sitemapDirectory)
-                ->filter(function ($file) use ($filePattern) {
-                    return $file['type'] === 'file' && fnmatch($filePattern, $file['path']);
+                ->filter(function ($file) use ($pattern) {
+                    return $file['type'] === 'file' && preg_match($pattern, $file['path']);
                 })
                 ->toArray();
                 
@@ -185,4 +186,5 @@ class SitemapGenerateSubscriber implements EventSubscriberInterface
             );
         }
     }
+    
 }
